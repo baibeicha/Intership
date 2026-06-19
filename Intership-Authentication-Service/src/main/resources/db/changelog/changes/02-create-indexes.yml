@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-indexes
+      author: kanstantsin_halkin
+      changes:
+        - createIndex:
+            tableName: user_credentials
+            indexName: idx_users_usernames
+            columns:
+              - column:
+                  name: username
+        - createIndex:
+            tableName: user_credentials
+            indexName: idx_users_ids
+            columns:
+              - column:
+                  name: user_id

@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-indexes
+      author: kanstantsin_halkin
+      changes:
+        - createIndex:
+            tableName: users
+            indexName: idx_users_email
+            columns:
+              - column:
+                  name: email
+
+        - createIndex:
+            tableName: users
+            indexName: idx_users_name_surname
+            columns:
+              - column:
+                  name: name
+              - column:
+                  name: surname
+
+        - createIndex:
+            tableName: card_info
+            indexName: idx_card_info_user_id
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            tableName: card_info
+            indexName: idx_card_info_number
+            columns:
+              - column:
+                  name: number

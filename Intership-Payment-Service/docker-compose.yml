@@ -1,0 +1,68 @@
+services:
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - payment-service-network
+
+  mongo:
+    image: mongo:latest
+    container_name: payment-service-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: user
+      MONGO_INITDB_ROOT_PASSWORD: pass
+      MONGO_INITDB_DATABASE: db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/mongo
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - payment-service-network
+
+  payment-service:
+    build: .
+    container_name: payment-service-app
+    ports:
+      - "8082:8082"
+    environment:
+      DB: db
+      DB_HOST: mongo
+      DB_USERNAME: user
+      DB_PASSWORD: pass
+      RANDOM_API_URL: https://www.random.org/integers/?num=1&min=1&max=100&format=plain&col=1&base=10
+      SERVER_PORT: 8082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - payment-service-network
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+
+networks:
+  payment-service-network:
+    driver: bridge

@@ -1,0 +1,225 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-mongo-config
+data:
+  MONGO_INITDB_DATABASE: "db"
+  MONGO_INITDB_ROOT_USERNAME: "user"
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: payment-mongo-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: payment-mongo
+spec:
+  serviceName: payment-mongo
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-mongo
+  template:
+    metadata:
+      labels:
+        app: payment-mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:latest
+          ports:
+            - containerPort: 27017
+          envFrom:
+            - configMapRef:
+                name: payment-mongo-config
+          env:
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-db-secret
+                  key: password
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-mongo
+spec:
+  ports:
+    - port: 27017
+  selector:
+    app: payment-mongo
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.7.0
+          ports:
+            - containerPort: 9092
+          env:
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@kafka-0.kafka.default.svc.cluster.local:9093"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka-0.kafka.default.svc.cluster.local:9092"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  ports:
+    - port: 9092
+  selector:
+    app: kafka
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-service-config
+data:
+  DB: "db"
+  DB_HOST: "payment-mongo"
+  DB_USERNAME: "user"
+  RANDOM_API_URL: "https://www.random.org/integers/?num=1&min=1&max=100&format=plain&col=1&base=10"
+  USER_SERVICE_URL: "http://user-service:8080"
+  ORDER_SERVICE_URL: "http://order-service:8081"
+  AUTH_SERVICE_URL: "http://auth-service:9000"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image:
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: payment-service-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-db-secret
+                  key: password
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+            - name: SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE
+              value: "admin"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 40
+            periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082
+      targetPort: 8082
+  selector:
+    app: payment-service

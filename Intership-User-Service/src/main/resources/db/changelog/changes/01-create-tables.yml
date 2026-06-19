@@ -1,0 +1,70 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-users-table
+      author: kanstantsin_halkin
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: surname
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: birth_date
+                  type: DATE
+              - column:
+                  name: email
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+  - changeSet:
+      id: create-card-info-table
+      author: kanstantsin_halkin
+      changes:
+        - createTable:
+            tableName: card_info
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_card_info_users
+                    references: users(id)
+              - column:
+                  name: number
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: holder
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiration_date
+                  type: VARCHAR(7)

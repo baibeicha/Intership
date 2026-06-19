@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: Intership-Authentication-Service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/auth}
+    username: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+    enabled: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  accessToken:
+    expiration: ${ACCESS_EXPIRATION:3600000}
+  refreshToken:
+    expiration: ${REFRESH_EXPIRATION:86400000}
+
+server:
+  port: 9000
+
+service:
+  user: ${USER_SERVICE_URL:http://localhost:8080/api/v1/users}

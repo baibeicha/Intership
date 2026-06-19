@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-postgres-config
+data:
+  POSTGRES_DB: "db"
+  POSTGRES_USER: "user"
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: order-postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: order-postgres
+spec:
+  serviceName: order-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-postgres
+  template:
+    metadata:
+      labels:
+        app: order-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:12
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: order-postgres-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-db-secret
+                  key: password
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - "pg_isready"
+                - "-U"
+                - "user"
+                - "-d"
+                - "db"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-postgres
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: order-postgres
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+data:
+  DB_URL: "jdbc:postgresql://order-postgres:5432/db"
+  DB_USERNAME: "user"
+  USER_SERVICE_URL: "http://user-service:8080"
+  AUTH_SERVICE_URL: "http://auth-service:9000"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image:
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: order-service-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-db-secret
+                  key: password
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 40
+            periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081
+      targetPort: 8081
+  selector:
+    app: order-service

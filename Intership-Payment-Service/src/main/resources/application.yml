@@ -1,0 +1,35 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${CONSUMER_GROUP:payment-service-group}
+      auto-offset-reset: earliest
+      properties:
+        spring.json.value.default.type: com.intership.paymentservice.model.dto.CreateOrderEvent
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+  application:
+    name: Intership-Payment-Service
+  data:
+    mongodb:
+      host: ${DB_HOST}
+      port: ${DB_PORT:27017}
+      database: ${DB}
+      username: ${DB_USERNAME}
+      password: ${DB_PASSWORD}
+
+server:
+  port: 8082
+
+random:
+  api:
+    url: ${RANDOM_API_URL}
+
+topic:
+  create-order: ${CREATE_ORDER_TOPIC:create-order-topic}
+  create-payment: ${CREATE_PAYMENT_TOPIC:create-payment-topic}

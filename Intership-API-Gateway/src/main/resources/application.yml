@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: Intership-API-Gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+          - id: user-service-cards
+            uri: ${service.user}
+            predicates:
+              - Path=/api/v1/cards/**
+
+          - id: user-service-users
+            uri: ${service.user}
+            predicates:
+              - Path=/api/v1/users/**
+
+          - id: auth-service
+            uri: ${service.auth}
+            predicates:
+              - Path=/api/v1/auth/**
+
+          - id: order-service-orders
+            uri: ${service.order}
+            predicates:
+              - Path=/api/v1/order/**
+
+          - id: order-service-items
+            uri: ${service.order}
+            predicates:
+              - Path=/api/v1/item/**
+
+server:
+  port: 8000
+
+service:
+  user: ${USER_SERVICE_URL}
+  order: ${ORDER_SERVICE_URL}
+  auth: ${AUTH_SERVICE_URL}

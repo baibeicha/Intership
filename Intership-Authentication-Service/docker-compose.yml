@@ -1,0 +1,46 @@
+services:
+  auth-postgres:
+    image: postgres:12
+    container_name: auth-service-postgres
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - auth-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  auth-service:
+    build: .
+    container_name: auth-service-app
+    ports:
+      - "9000:9000"
+    environment:
+      DB_URL: jdbc:postgresql://auth-postgres:5432/auth
+      DB_USERNAME: user
+      DB_PASSWORD: pass
+      JWT_SECRET: ${JWT_SECRET}
+      USER_SERVICE_URL: http://user-service:8080/api/v1/users
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+    networks:
+      - auth-service-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  auth-service-network:
+    driver: bridge

@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: Intership-User-Service
+  cache:
+    type: redis
+    redis:
+      time-to-live: ${REDIS_CACHE_TIME_TO_LIVE:600000}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/users}
+    username: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+    enabled: true
+
+auth:
+  url: ${AUTH_URL:http://localhost:9000}
+
+server:
+  port: 8080

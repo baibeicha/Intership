@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-indexes
+      author: kanstantsin_halkin
+      changes:
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_user_id
+            columns:
+              - column:
+                  name: user_email
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_creation_date
+            columns:
+              - column:
+                  name: creation_date
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_order_id
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_item_id
+            columns:
+              - column:
+                  name: item_id
+        - createIndex:
+            tableName: items
+            indexName: idx_items_name
+            columns:
+              - column:
+                  name: name

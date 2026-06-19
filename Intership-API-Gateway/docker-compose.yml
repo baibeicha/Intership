@@ -1,0 +1,11 @@
+services:
+  api-gateway:
+    build: .
+    container_name: api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      USER_SERVICE_URL: http://user-service:8080
+      ORDER_SERVICE_URL: http://order-service:8081
+      AUTH_SERVICE_URL: http://auth-service:9000
+    restart: unless-stopped
